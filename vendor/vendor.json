@@ -1,0 +1,22 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "azeqbBjYyd/UYnL21UBo2JmM8Mo=",
+			"path": "github.com/wvanbergen/kafka/consumergroup",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "CiDIt0xu07NzokEH0lTsCiMDA3U=",
+			"path": "github.com/wvanbergen/kazoo-go",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "0fS181yQoG8xH83YHkxzCvQ+I3M=",
+			"path": "golang.org/x/time/rate",
+			"revision": ""
+		}
+	],
+	"rootPath": "minerva/scloud/stargazer-base-lib"
+}
