@@ -459,9 +459,12 @@ func generateConsumerInstanceID() (string, error) {
 		return "", err
 	}
 
-	hostname, err := os.Hostname()
-	if err != nil {
-		return "", err
+	hostname := os.Getenv("HOST")
+	if hostname == "" {
+		hostname, err = os.Hostname()
+		if err != nil {
+			return "", err
+		}
 	}
 
 	return fmt.Sprintf("%s:%s", hostname, uuid), nil

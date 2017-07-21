@@ -103,9 +103,12 @@ func generateConsumerID() (consumerID string, err error) {
 		return
 	}
 
-	hostname, err = os.Hostname()
-	if err != nil {
-		return
+	hostname = os.Getenv("HOST")
+	if hostname == "" {
+		hostname, err = os.Hostname()
+		if err != nil {
+			return "", err
+		}
 	}
 
 	consumerID = fmt.Sprintf("%s:%s", hostname, uuid)

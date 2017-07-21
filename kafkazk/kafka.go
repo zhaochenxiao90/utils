@@ -39,23 +39,17 @@ func InitKafkaConnect(kafka_conf map[string]string, producer_flag bool, consumer
 		return errors.New("pls set \"broker\" in kafka section!")
 	}
 
-	//zookeeper
-	zk, zk_ok := kafka_conf["zookeeper"]
-	if !zk_ok {
-		return errors.New("pls set \"zookeeper\" in kafka section!")
-	}
-
 	//produce_topic
 	if producer_flag {
 		var err error
-		GlobalKafkaProducer, err = NewKafkaProducerWithLog(broker, 5)
-		if err != nil {
-			return err
-		}
-
 		topic, topic_ok := kafka_conf["produce_topic"]
 		if !topic_ok {
 			return errors.New("pls set \"produce_topic\" in kafka section!")
+		}
+
+		GlobalKafkaProducer, err = NewKafkaProducerWithLog(broker, 5)
+		if err != nil {
+			return err
 		}
 		GlobalKafkaProducerTopic = topic
 	}
@@ -67,11 +61,15 @@ func InitKafkaConnect(kafka_conf map[string]string, producer_flag bool, consumer
 		if !topic_ok {
 			return errors.New("pls set \"consume_topic\" in kafka section!")
 		}
-
 		//consume_group
 		group, group_ok2 := kafka_conf["consume_group"]
 		if !group_ok2 {
 			return errors.New("pls set \"consume_group\" in kafka section!")
+		}
+		//zookeeper
+		zk, zk_ok := kafka_conf["zookeeper"]
+		if !zk_ok {
+			return errors.New("pls set \"zookeeper\" in kafka section!")
 		}
 
 		//New Consumer
