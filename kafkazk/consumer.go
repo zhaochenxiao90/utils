@@ -6,7 +6,7 @@ import (
 	"github.com/wvanbergen/kazoo-go"
 	"golang.org/x/net/context"
 	"golang.org/x/time/rate"
-	//"minerva/scloud/stargazer/util"
+	"minerva/scloud/stargazer-base-lib/log"
 	"os"
 	"os/signal"
 	"strings"
@@ -59,9 +59,9 @@ func NewKafkaConsumer(servers, topics, group, zk string) (*KafkaConsumer, error)
 		signal.Notify(wait, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
 		<-wait
 
-		//util.Logger.Warn("get signal:%s!!!", signal.String())
+		//log.Logger.Warn("get signal:%s!!!", signal.String())
 		k_consumer.Close()
-		//util.Logger.Warn("kafka consumer closed!!!")
+		//log.Logger.Warn("kafka consumer closed!!!")
 	}()
 
 	return k_consumer, nil
@@ -71,8 +71,12 @@ func (k_consumer *KafkaConsumer) getResponse() {
 	k_consumer.wg.Add(1)
 	go func() {
 		defer k_consumer.wg.Done()
-		for _ = range k_consumer.consumer.Errors() {
-			//util.Logger.Error("kafka consume error:%v", err)
+		for err := range k_consumer.consumer.Errors() {
+			log.Logger.Error("kafka consume error:%v", err)
+			if strings.Contains(err.Error(), "zk:") || strings.Contains(err.Error(), "connect") {
+				log.Logger.Error("consumer error:%s,will exist", err.Error())
+				os.Exit(1)
+			}
 		}
 	}()
 }
@@ -80,7 +84,7 @@ func (k_consumer *KafkaConsumer) getResponse() {
 func (k_consumer *KafkaConsumer) Close() {
 	err := k_consumer.consumer.Close()
 	if err != nil {
-		//util.Logger.Error("kafka close error:%v", err)
+		//log.Logger.Error("kafka close error:%v", err)
 		return
 	}
 	k_consumer.cancelFunc()
@@ -107,7 +111,7 @@ func (k_consumer *KafkaConsumer) Start(rlimit int, execute func(*sarama.Consumer
 		for msg := range k_consumer.consumer.Messages() {
 			err = k_consumer.rateLimiter.Wait(ctx)
 			if err != nil {
-				//util.Logger.Error("rateLimiter wait error:%v", err)
+				//log.Logger.Error("rateLimiter wait error:%v", err)
 				break
 			}
 
