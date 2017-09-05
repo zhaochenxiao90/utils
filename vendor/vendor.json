@@ -3,6 +3,12 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "LoRD9N4s7MipSEX/8H4LCeXWxRk=",
+			"path": "github.com/Shopify/sarama",
+			"revision": "15174039fd207656a0f97f52bc78ec7793deeada",
+			"revisionTime": "2017-08-25T18:38:27Z"
+		},
+		{
 			"checksumSHA1": "azeqbBjYyd/UYnL21UBo2JmM8Mo=",
 			"path": "github.com/wvanbergen/kafka/consumergroup",
 			"revision": ""
@@ -15,6 +21,16 @@
 		{
 			"checksumSHA1": "0fS181yQoG8xH83YHkxzCvQ+I3M=",
 			"path": "golang.org/x/time/rate",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "DuNdObYNGCFB5Kcw61dkBAOAj8Q=",
+			"path": "gopkg.in/Shopify/sarama.v1",
+			"revision": ""
+		},
+		{
+			"checksumSHA1": "wGFj3jrqimuEkNIVbZbvA/USAog=",
+			"path": "gopkg.in/bsm/sarama-cluster.v2",
 			"revision": ""
 		}
 	],
