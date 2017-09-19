@@ -26,11 +26,19 @@ type KafkaConsumer struct {
 	cancelFunc  context.CancelFunc
 }
 
-func NewKafkaConsumer(servers, topics, group string) (*KafkaConsumer, error) {
+func NewKafkaConsumer(servers, topics, group string, userPwd ...string) (*KafkaConsumer, error) {
 	config := cluster.NewConfig()
 	config.Consumer.Return.Errors = true
 	config.Group.Return.Notifications = true
 	config.Consumer.Offsets.Initial = sarama.OffsetOldest
+
+	if len(userPwd) == 2 {
+		if len(userPwd[0]) > 0 && len(userPwd[1]) > 0 {
+			config.Net.SASL.Enable = true
+			config.Net.SASL.User = userPwd[0]
+			config.Net.SASL.Password = userPwd[1]
+		}
+	}
 
 	// Init client
 	topic_array := strings.Split(topics, ",")

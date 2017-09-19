@@ -32,11 +32,13 @@ func InitKafkaConnect(kafka_conf map[string]string, producer_flag bool, consumer
 	if !broker_ok {
 		return errors.New("pls set \"broker\" in kafka section!")
 	}
+	user, _ := kafka_conf["user"]
+	pwd, _ := kafka_conf["pwd"]
 
 	//produce_topic
 	if producer_flag {
 		var err error
-		GlobalKafkaProducer, err = NewKafkaProducerWithLog(broker, 5)
+		GlobalKafkaProducer, err = NewKafkaProducerWithLog(broker, 5, user, pwd)
 		if err != nil {
 			return err
 		}
@@ -64,7 +66,7 @@ func InitKafkaConnect(kafka_conf map[string]string, producer_flag bool, consumer
 
 		//New Consumer
 		var consumer_err error
-		GlobalKafkaConsumer, consumer_err = NewKafkaConsumer(broker, topic, group)
+		GlobalKafkaConsumer, consumer_err = NewKafkaConsumer(broker, topic, group, user, pwd)
 		if consumer_err != nil {
 			return consumer_err
 		}
@@ -89,9 +91,16 @@ func NewKafkaProducer(servers string) (*KafkaProducer, error) {
 	return k_producer, nil
 }
 
-func NewKafkaProducerWithLog(servers string, interval int) (*KafkaProducer, error) {
+func NewKafkaProducerWithLog(servers string, interval int, userPwd ...string) (*KafkaProducer, error) {
 	config := sarama.NewConfig()
 	config.Producer.Return.Successes = true
+	if len(userPwd) == 2 {
+		if len(userPwd[0]) > 0 && len(userPwd[1]) > 0 {
+			config.Net.SASL.Enable = true
+			config.Net.SASL.User = userPwd[0]
+			config.Net.SASL.Password = userPwd[1]
+		}
+	}
 
 	server_array := strings.Split(servers, ",")
 	producer, err := sarama.NewAsyncProducer(server_array, config)
@@ -147,14 +156,8 @@ func (producer *KafkaProducer) getResponse() {
 		defer producer.wg.Done()
 		for err := range producer.Sarama.Errors() {
 			producer.ErrCount++
-
-			key_bytes, _ := err.Msg.Key.Encode()
-			content_bytes, _ := err.Msg.Value.Encode()
 			log.Logger.Error(
-				"kafka topic:%s, key: %s, msg:%s, error:%s",
-				err.Error(),
-				string(key_bytes),
-				string(content_bytes),
+				"kafka error:%s", err.Error(),
 			)
 		}
 	}()
