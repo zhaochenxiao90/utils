@@ -74,7 +74,7 @@ func InitKafkaConnect(kafka_conf map[string]string, producer_flag bool, consumer
 
 		//New Consumer
 		var consumer_err error
-		GlobalKafkaConsumer, consumer_err = NewKafkaConsumer(broker, topic, group, zk)
+		GlobalKafkaConsumer, consumer_err = NewKafkaConsumer(broker, topic, group, zk, kafka_conf["offset"])
 		if consumer_err != nil {
 			return consumer_err
 		}

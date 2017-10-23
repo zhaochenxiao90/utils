@@ -15,6 +15,10 @@ import (
 	"time"
 )
 
+const (
+	OFFSET_NEWEST = "newest"
+)
+
 type KafkaConsumer struct {
 	servers     string
 	topics      string
@@ -26,10 +30,14 @@ type KafkaConsumer struct {
 	cancelFunc  context.CancelFunc
 }
 
-func NewKafkaConsumer(servers, topics, group, zk string) (*KafkaConsumer, error) {
+func NewKafkaConsumer(servers, topics, group, zk, offset string) (*KafkaConsumer, error) {
 	config := consumergroup.NewConfig()
-	config.Offsets.Initial = sarama.OffsetNewest
+	config.Offsets.Initial = sarama.OffsetOldest
 	config.Offsets.ProcessingTimeout = 10 * time.Second
+
+	if offset == OFFSET_NEWEST {
+		config.Offsets.Initial = sarama.OffsetNewest
+	}
 
 	var zookeeperNodes []string
 	zookeeperNodes, config.Zookeeper.Chroot = kazoo.ParseConnectionString(zk)

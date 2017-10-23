@@ -14,6 +14,10 @@ import (
 	"minerva/scloud/stargazer-base-lib/log"
 )
 
+const (
+	OFFSET_NEWEST = "newest"
+)
+
 type KafkaConsumer struct {
 	servers     string
 	topics      string
@@ -31,6 +35,12 @@ func NewKafkaConsumer(servers, topics, group string, userPwd ...string) (*KafkaC
 	config.Consumer.Return.Errors = true
 	config.Group.Return.Notifications = true
 	config.Consumer.Offsets.Initial = sarama.OffsetOldest
+
+	if len(userPwd) >= 3 {
+		if userPwd[2] == OFFSET_NEWEST {
+			config.Consumer.Offsets.Initial = sarama.OffsetNewest
+		}
+	}
 
 	if len(userPwd) == 2 {
 		if len(userPwd[0]) > 0 && len(userPwd[1]) > 0 {
