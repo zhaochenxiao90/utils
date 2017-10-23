@@ -13,15 +13,19 @@ var (
 )
 
 type RedisInfo struct {
-	Addr    string
-	PassWd  string
-	Timeout int
+	Addr      string
+	PassWd    string
+	Timeout   int
+	MaxActive int
+	MaxIdle   int
 }
 
-func RedisInit(addr, passwd string, timeout int) {
+func RedisInit(addr, passwd string, timeout, active, idle int) {
 	redisInfo.Addr = addr
 	redisInfo.PassWd = passwd
 	redisInfo.Timeout = timeout
+	redisInfo.MaxActive = active
+	redisInfo.MaxIdle = idle
 
 	defaultRedisPool = pollInit(redisInfo)
 }
@@ -49,8 +53,8 @@ func pollInit(info RedisInfo) *redisgo.Pool {
 			}
 			return nil, err
 		},
-		MaxIdle:     3,
-		MaxActive:   3,
+		MaxIdle:     info.MaxIdle,
+		MaxActive:   info.MaxActive,
 		IdleTimeout: 60 * time.Second,
 		TestOnBorrow: func(c redisgo.Conn, t time.Time) error {
 			_, err := c.Do("PING")
