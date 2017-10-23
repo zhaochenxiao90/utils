@@ -34,8 +34,9 @@ func NewKafkaConsumer(servers, topics, group, zk, offset string) (*KafkaConsumer
 	config := consumergroup.NewConfig()
 	config.Offsets.Initial = sarama.OffsetOldest
 	config.Offsets.ProcessingTimeout = 10 * time.Second
-
+	log.Logger.Info("kafkazk config: offset init:oldest")
 	if offset == OFFSET_NEWEST {
+		log.Logger.Info("kafkazk config: offset:%s", offset)
 		config.Offsets.Initial = sarama.OffsetNewest
 	}
 

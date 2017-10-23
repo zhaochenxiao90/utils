@@ -35,9 +35,10 @@ func NewKafkaConsumer(servers, topics, group string, userPwd ...string) (*KafkaC
 	config.Consumer.Return.Errors = true
 	config.Group.Return.Notifications = true
 	config.Consumer.Offsets.Initial = sarama.OffsetOldest
-
+	log.Logger.Info("kafka config: offset init:oldest")
 	if len(userPwd) >= 3 {
 		if userPwd[2] == OFFSET_NEWEST {
+			log.Logger.Info("kafka config: offset:%s", userPwd[2])
 			config.Consumer.Offsets.Initial = sarama.OffsetNewest
 		}
 	}
