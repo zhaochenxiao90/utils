@@ -1,15 +1,18 @@
 package redis
 
 import (
+	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	redisgo "github.com/garyburd/redigo/redis"
 )
 
 var (
-	defaultRedisPool *redisgo.Pool
 	redisInfo        RedisInfo
+	defaultRedisPool *redisgo.Pool
+	mux = &sync.Mutex{}
 )
 
 type RedisInfo struct {
@@ -64,7 +67,9 @@ func pollInit(info RedisInfo) *redisgo.Pool {
 }
 
 func SetString(key, val string) error {
+	mux.Lock()
 	c := defaultRedisPool.Get()
+	mux.Unlock()
 	defer c.Close()
 	_, err := c.Do("SET", key, val)
 
@@ -72,7 +77,9 @@ func SetString(key, val string) error {
 }
 
 func GetString(key string) (string, error) {
+	mux.Lock()
 	c := defaultRedisPool.Get()
+	mux.Unlock()
 	defer c.Close()
 	reply, err := redisgo.String(c.Do("GET", key))
 
@@ -83,7 +90,9 @@ func GetString(key string) (string, error) {
 }
 
 func SetInt64(key string, val int64) error {
+	mux.Lock()
 	c := defaultRedisPool.Get()
+	mux.Unlock()
 	defer c.Close()
 	_, err := c.Do("SET", key, val)
 
@@ -91,7 +100,9 @@ func SetInt64(key string, val int64) error {
 }
 
 func GetInt64(key string) (int64, error) {
+	mux.Lock()
 	c := defaultRedisPool.Get()
+	mux.Unlock()
 	defer c.Close()
 	reply, err := redisgo.Int64(c.Do("GET", key))
 
@@ -102,21 +113,27 @@ func GetInt64(key string) (int64, error) {
 }
 
 func HashMultiGet(fields ...interface{}) ([]string, error) {
+	mux.Lock()
 	c := defaultRedisPool.Get()
+	mux.Unlock()
 	defer c.Close()
 
 	return redisgo.Strings(c.Do("HMGET", fields...))
 }
 
 func HashMultiSet(param ...interface{}) {
+	mux.Lock()
 	c := defaultRedisPool.Get()
+	mux.Unlock()
 	defer c.Close()
 
 	c.Do("HMSET", param...)
 }
 
 func HashGetAll(hashKey string) ([]string, error) {
+	mux.Lock()
 	c := defaultRedisPool.Get()
+	mux.Unlock()
 	defer c.Close()
 
 	ret, err := c.Do("HGETALL", hashKey)
@@ -131,7 +148,9 @@ func HashGetAll(hashKey string) ([]string, error) {
 }
 
 func HashGet(hashKey string, key string) ([]byte, error) {
+	mux.Lock()
 	c := defaultRedisPool.Get()
+	mux.Unlock()
 	defer c.Close()
 
 	ret, err := c.Do("HGET", hashKey, key)
@@ -146,15 +165,194 @@ func HashGet(hashKey string, key string) ([]byte, error) {
 }
 
 func HashSet(hashKey string, key string, val []byte) (int, error) {
+	mux.Lock()
 	c := defaultRedisPool.Get()
+	mux.Unlock()
 	defer c.Close()
 
 	return redisgo.Int(c.Do("HSET", hashKey, key, val))
 }
 
 func HashKeys(hashKey string) ([]string, error) {
+	mux.Lock()
 	c := defaultRedisPool.Get()
+	mux.Unlock()
 	defer c.Close()
 
 	return redisgo.Strings(c.Do("HKEYS", hashKey))
+}
+
+func Incr(key string) (int64, error) {
+	mux.Lock()
+	c := defaultRedisPool.Get()
+	mux.Unlock()
+	defer c.Close()
+
+	return redisgo.Int64(c.Do("INCR", key))
+}
+
+func Expire(key string, t int64) (int64, error) {
+	mux.Lock()
+	c := defaultRedisPool.Get()
+	mux.Unlock()
+	defer c.Close()
+
+	return redisgo.Int64(c.Do("EXPIRE", key, t))
+}
+
+func Delete(key string) (int64, error) {
+	mux.Lock()
+	c := defaultRedisPool.Get()
+	mux.Unlock()
+	defer c.Close()
+
+	return redisgo.Int64(c.Do("DEL", key))
+}
+
+// 处理scan返回key的函数定义
+type ScanProcFunc func(key string) error
+
+func Scan(keyFlag string, count int, scanFunc ScanProcFunc, threadNum int) error {
+	var scanPos int64 = 0
+	scanLock := sync.Mutex{}
+	exitFlag := false
+	wg := &sync.WaitGroup{}
+
+	// SCAN匹配关键字
+	key := keyFlag
+	if key == "" {
+		key = "*"
+	}
+	// 每次返回结果条数
+	tmpCount := 10
+	if count > 0 {
+		tmpCount = count
+	}
+
+	for i := 0; i < threadNum; i++ {
+		index := i
+		wg.Add(1)
+		go func(index int) error {
+			defer wg.Done()
+			mux.Lock()
+			c := defaultRedisPool.Get()
+			mux.Unlock()
+			defer c.Close()
+
+			for {
+				scanLock.Lock()
+				if exitFlag {
+					scanLock.Unlock()
+					return nil
+				}
+				// 执行一次scan操作
+				tmpRes, err := c.Do("SCAN", scanPos, "MATCH", key, "COUNT", tmpCount)
+				if err != nil {
+					scanLock.Unlock()
+					return fmt.Errorf("scan thread:%d scan failed,err:%s", index, err.Error())
+				}
+				res := tmpRes.([]interface{})
+				// 返回结果数组长度不为2,则格式错误
+				if len(res) != 2 {
+					scanLock.Unlock()
+					return fmt.Errorf("scan thread:%d scan res len is:%d,not 2", index, len(res))
+				}
+				// 获取下一次scan位置
+				var tmpNum int64 = 0
+				fmt.Sscanf(string(res[0].([]byte)), "%d", &tmpNum)
+				if tmpNum > 0 {
+					scanPos = tmpNum
+				} else {
+					exitFlag = true
+				}
+				scanLock.Unlock()
+				if scanFunc != nil {
+					for _, v := range res[1].([]interface{}) {
+						go func(key string) {
+							scanFunc(key)
+						}(string(v.([]byte)))
+					}
+				}
+			}
+			return nil
+		}(index)
+	}
+	wg.Wait()
+	return nil
+}
+
+// 处理scan返回key的函数定义
+type HScanProcFunc func(key, field string) error
+
+func HScan(hashKey, fieldFlag string, count int, scanFunc HScanProcFunc, threadNum int) error {
+	var scanPos int64 = 0
+	scanLock := sync.Mutex{}
+	exitFlag := false
+	wg := &sync.WaitGroup{}
+
+	// SCAN匹配关键字
+	key := fieldFlag
+	if key == "" {
+		key = "*"
+	}
+	// 每次返回结果条数
+	tmpCount := 10
+	if count > 0 {
+		tmpCount = count
+	}
+
+	for i := 0; i < threadNum; i++ {
+		in := i
+		wg.Add(1)
+		go func(index int) error {
+			defer wg.Done()
+			mux.Lock()
+			c := defaultRedisPool.Get()
+			mux.Unlock()
+			defer c.Close()
+
+			for {
+				scanLock.Lock()
+				if exitFlag {
+					scanLock.Unlock()
+					return nil
+				}
+				// 执行一次scan操作
+				tmpRes, err := c.Do("HSCAN", hashKey, scanPos, "MATCH", key, "COUNT", tmpCount)
+				if err != nil {
+					scanLock.Unlock()
+					return fmt.Errorf("hscan thread:%d scan failed,err:%s", index, err.Error())
+				}
+				res := tmpRes.([]interface{})
+				// 返回结果数组长度不为2,则格式错误
+				if len(res) != 2 {
+					scanLock.Unlock()
+					return fmt.Errorf("hscan thread:%d scan res len is:%d,not 2", index, len(res))
+				}
+				// 获取下一次scan位置
+				var tmpNum int64 = 0
+				fmt.Sscanf(string(res[0].([]byte)), "%d", &tmpNum)
+				if tmpNum > 0 {
+					scanPos = tmpNum
+				} else {
+					exitFlag = true
+				}
+				scanLock.Unlock()
+				if scanFunc != nil {
+					v2 := res[1].([]interface{})
+					resLen := len(v2)
+					if resLen > 0 {
+						for i := 0; i < resLen; i += 2 {
+							go func(key, field string) {
+								scanFunc(key, field)
+							}(hashKey, string(v2[i].([]byte)))
+						}
+					}
+				}
+			}
+			return nil
+		}(in)
+	}
+	wg.Wait()
+	return nil
 }
