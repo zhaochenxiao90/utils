@@ -128,3 +128,16 @@ func TestHScan(t *testing.T) {
 	time.Sleep(1 * time.Second)
 	Delete("testhashscan")
 }
+
+func TestExist(t *testing.T) {
+	RedisInit("10.135.29.168:16379", "wangchunyan1@le.com", 3, 10000, 10)
+
+	SetString("exkey", "exvalue")
+	n, err := Exist("exkey")
+	if err != nil {
+		t.Fatalf("exist failed,err:%s", err.Error())
+	}
+	if n == 1 {
+		t.Logf("exist exkey")
+	}
+}

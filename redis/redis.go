@@ -173,6 +173,15 @@ func HashSet(hashKey string, key string, val []byte) (int, error) {
 	return redisgo.Int(c.Do("HSET", hashKey, key, val))
 }
 
+func HashDel(hashKey, field string) (int, error) {
+	mux.Lock()
+	c := defaultRedisPool.Get()
+	mux.Unlock()
+	defer c.Close()
+
+	return redisgo.Int(c.Do("HDEL", hashKey, field))
+}
+
 func HashKeys(hashKey string) ([]string, error) {
 	mux.Lock()
 	c := defaultRedisPool.Get()
@@ -207,6 +216,15 @@ func Delete(key string) (int64, error) {
 	defer c.Close()
 
 	return redisgo.Int64(c.Do("DEL", key))
+}
+
+func Exist(key ...interface{})(int64, error) {
+	mux.Lock()
+	c := defaultRedisPool.Get()
+	mux.Unlock()
+	defer c.Close()
+
+	return redisgo.Int64(c.Do("EXISTS", key...))
 }
 
 // 处理scan返回key的函数定义
