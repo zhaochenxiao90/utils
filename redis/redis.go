@@ -200,6 +200,15 @@ func Incr(key string) (int64, error) {
 	return redisgo.Int64(c.Do("INCR", key))
 }
 
+func IncrBy(key string, cnt int64) (int64, error) {
+	mux.Lock()
+	c := defaultRedisPool.Get()
+	mux.Unlock()
+	defer c.Close()
+
+	return redisgo.Int64(c.Do("INCRBY", key, cnt))
+}
+
 func Expire(key string, t int64) (int64, error) {
 	mux.Lock()
 	c := defaultRedisPool.Get()
@@ -207,6 +216,15 @@ func Expire(key string, t int64) (int64, error) {
 	defer c.Close()
 
 	return redisgo.Int64(c.Do("EXPIRE", key, t))
+}
+
+func Ttl(key string) (int64, error) {
+	mux.Lock()
+	c := defaultRedisPool.Get()
+	mux.Unlock()
+	defer c.Close()
+
+	return redisgo.Int64(c.Do("TTL", key))
 }
 
 func Delete(key string) (int64, error) {

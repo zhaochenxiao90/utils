@@ -89,12 +89,46 @@ func TestIncr(t *testing.T) {
 	Delete("incrkey")
 }
 
+func TestIncrBy(t *testing.T) {
+	RedisInit("10.135.29.168:16379", "wangchunyan1@le.com", 3, 3, 1)
+
+	Delete("incrbykey")
+	n, err := IncrBy("incrbykey", 5)
+	if err != nil {
+		t.Fatalf("set TestIncrBy failed,err:%s", err.Error())
+	}
+	t.Logf("set hash key n is:%d", n)
+	IncrBy("incrbykey", 5)
+	n, err = GetInt64("incrbykey")
+	if err != nil || n != 10 {
+		t.Fatalf("incr failed")
+	}
+	t.Logf("set hash key n is:%d", n)
+	Delete("incrbykey")
+}
+
 func TestExpire(t *testing.T) {
 	RedisInit("10.135.29.168:16379", "wangchunyan1@le.com", 3, 3, 1)
 
 	Delete("expirerkey")
 	SetString("expirerkey", "expirerkey")
 	Expire("expirerkey", 60)
+}
+
+func TestTtl(t *testing.T) {
+	RedisInit("10.135.29.168:16379", "wangchunyan1@le.com", 3, 3, 1)
+
+	Delete("expirerkey")
+	SetString("expirerkey", "expirerkey")
+	Expire("expirerkey", 60)
+	time.Sleep(5*time.Second)
+
+	ttl, err := Ttl("expirerkey")
+	if err != nil {
+		t.Fatalf("ttl failed,err:%s", err.Error())
+	}
+	t.Logf("ttl:%d", ttl)
+	Delete("expirerkey")
 }
 
 func echoKey(key string) error {
