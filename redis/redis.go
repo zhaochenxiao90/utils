@@ -7,12 +7,14 @@ import (
 	"time"
 
 	redisgo "github.com/garyburd/redigo/redis"
+	"minerva/scloud/stargazer-base-lib/atomic"
 )
 
 var (
 	redisInfo        RedisInfo
 	defaultRedisPool *redisgo.Pool
-	mux = &sync.Mutex{}
+	mux              = &sync.Mutex{}
+	connIndex        uint64
 )
 
 type RedisInfo struct {
@@ -37,8 +39,14 @@ func pollInit(info RedisInfo) *redisgo.Pool {
 	return &redisgo.Pool{
 		Dial: func() (redisgo.Conn, error) {
 			var err error
-			for _, addr := range strings.Split(info.Addr, ",") {
-				c, err := redisgo.Dial("tcp4", addr,
+			addrs := strings.Split(info.Addr, ",")
+			addsLen := uint64(len(addrs))
+			if atomic.GetUInt64(&connIndex) >= addsLen {
+				atomic.ResetUInt64(&connIndex)
+			}
+			for i := atomic.GetUInt64(&connIndex); i < addsLen; i++ {
+				atomic.IncrUInt64(&connIndex)
+				c, err := redisgo.Dial("tcp4", addrs[i],
 					redisgo.DialConnectTimeout(time.Duration(info.Timeout)*time.Second),
 				)
 				if err != nil {
@@ -54,6 +62,7 @@ func pollInit(info RedisInfo) *redisgo.Pool {
 				}
 				return c, nil
 			}
+
 			return nil, err
 		},
 		MaxIdle:     info.MaxIdle,
@@ -72,6 +81,16 @@ func SetString(key, val string) error {
 	mux.Unlock()
 	defer c.Close()
 	_, err := c.Do("SET", key, val)
+
+	return err
+}
+
+func SetStringNx(key, val string) error {
+	mux.Lock()
+	c := defaultRedisPool.Get()
+	mux.Unlock()
+	defer c.Close()
+	_, err := c.Do("SETNX", key, val)
 
 	return err
 }
@@ -95,6 +114,16 @@ func SetInt64(key string, val int64) error {
 	mux.Unlock()
 	defer c.Close()
 	_, err := c.Do("SET", key, val)
+
+	return err
+}
+
+func SetInt64Nx(key string, val int64) error {
+	mux.Lock()
+	c := defaultRedisPool.Get()
+	mux.Unlock()
+	defer c.Close()
+	_, err := c.Do("SETNX", key, val)
 
 	return err
 }
@@ -236,7 +265,7 @@ func Delete(key string) (int64, error) {
 	return redisgo.Int64(c.Do("DEL", key))
 }
 
-func Exist(key ...interface{})(int64, error) {
+func Exist(key ...interface{}) (int64, error) {
 	mux.Lock()
 	c := defaultRedisPool.Get()
 	mux.Unlock()

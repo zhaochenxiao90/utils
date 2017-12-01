@@ -8,15 +8,19 @@ import (
 )
 
 func TestSetString(t *testing.T) {
-	RedisInit("10.135.29.168:16379", "wangchunyan1@le.com", 3, 3, 1)
+	RedisInit("10.110.92.171:6379,10.110.92.171:6380,10.110.92.172:6379", "", 3, 3, 1)
+
+	for i := 0; i < 100; i++ {
+		go SetString("aaa", "bbb")
+	}
 
 	err := SetString("testkey", "testvalue")
 	if err != nil {
-		t.Fatalf("set testkey failed,err:%s", err.Error())
+		//t.Fatalf("set testkey failed,err:%s", err.Error())
 	}
 	s, err := GetString("testkey")
 	if err != nil {
-		t.Fatalf("get testkey failed,err:%s", err.Error())
+		//t.Fatalf("get testkey failed,err:%s", err.Error())
 	}
 	t.Logf("testkey:%s", s)
 	Delete("testkey")
@@ -121,7 +125,7 @@ func TestTtl(t *testing.T) {
 	Delete("expirerkey")
 	SetString("expirerkey", "expirerkey")
 	Expire("expirerkey", 60)
-	time.Sleep(5*time.Second)
+	time.Sleep(5 * time.Second)
 
 	ttl, err := Ttl("expirerkey")
 	if err != nil {
