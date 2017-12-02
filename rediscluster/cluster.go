@@ -55,8 +55,16 @@ func stringCmdRes(cmd *redis.StringCmd) (string, error) {
 	return cmd.Val(), cmd.Err()
 }
 
+func stringCmdInt64Res(cmd *redis.StringCmd) (int64, error) {
+	return cmd.Int64()
+}
+
 func intCmdRes(cmd *redis.IntCmd) (int64, error) {
 	return cmd.Val(), cmd.Err()
+}
+
+func duraCmdRes(cmd *redis.DurationCmd) (int64, error) {
+	return int64(cmd.Val()) / int64(time.Second), cmd.Err()
 }
 
 func (c *RedisCluster) SetNx(key string, val interface{}, expire int64) (bool, error) {
@@ -75,12 +83,20 @@ func Expire(key string, expire int64) (bool, error) {
 	return boolCmdRes(DefaultCluster.client.Expire(key, time.Duration(expire)*time.Second))
 }
 
-func (c *RedisCluster) Get(key string) (string, error) {
+func GetStr(key string) (string, error) {
+	return stringCmdRes(DefaultCluster.client.Get(key))
+}
+
+func (c *RedisCluster) GetStr(key string) (string, error) {
 	return stringCmdRes(c.client.Get(key))
 }
 
-func Get(key string) (string, error) {
-	return stringCmdRes(DefaultCluster.client.Get(key))
+func GetInt64(key string) (int64, error) {
+	return stringCmdInt64Res(DefaultCluster.client.Get(key))
+}
+
+func (c *RedisCluster) GetInt64(key string) (int64, error) {
+	return stringCmdInt64Res(c.client.Get(key))
 }
 
 func Del(key ...string) (int64, error) {
@@ -89,6 +105,22 @@ func Del(key ...string) (int64, error) {
 
 func (c *RedisCluster) Del(key ...string) (int64, error) {
 	return intCmdRes(c.client.Del(key...))
+}
+
+func TTL(key string) (int64, error) {
+	return duraCmdRes(DefaultCluster.client.TTL(key))
+}
+
+func (c *RedisCluster) TTL(key string) (int64, error) {
+	return duraCmdRes(c.client.TTL(key))
+}
+
+func IncrBy(key string, value int64) (int64, error) {
+	return intCmdRes(DefaultCluster.client.IncrBy(key, value))
+}
+
+func (c *RedisCluster) IncrBy(key string, value int64) (int64, error) {
+	return intCmdRes(c.client.IncrBy(key, value))
 }
 
 // 处理scan返回key的函数定义
