@@ -88,7 +88,30 @@ func GetString(key string) (string, error) {
 	}
 	return reply, nil
 }
-
+func GetStrings(key string) (reply []string,err error) {
+	mux.Lock()
+	c := defaultRedisPool.Get()
+	mux.Unlock()
+	defer c.Close()
+	reply, err = redisgo.Strings(c.Do("keys",key))
+	return reply, nil
+}
+func SetSortSet(key,value,score string) error  {
+	mux.Lock()
+	c := defaultRedisPool.Get()
+	mux.Unlock()
+	defer c.Close()
+	_, err := c.Do("ZADD", key,score, value)
+	_,err=c.Do("ZREMRANGEBYRANK",key,1,-2)
+	return err
+}
+func GetSortSet(key string)  {
+	mux.Lock()
+	c := defaultRedisPool.Get()
+	mux.Unlock()
+	defer c.Close()
+	c.Do("ZRANGE",key, 0 ,10, "WITHSCORES")
+}
 func SetInt64(key string, val int64) error {
 	mux.Lock()
 	c := defaultRedisPool.Get()
@@ -374,3 +397,4 @@ func HScan(hashKey, fieldFlag string, count int, scanFunc HScanProcFunc, threadN
 	wg.Wait()
 	return nil
 }
+
